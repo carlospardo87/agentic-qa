@@ -12,7 +12,7 @@ export default defineConfig({
   /* Retry on E2E failures */
   retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 1, //undefined
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -23,6 +23,10 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'https://demo.playwright.dev/todomvc/#/',
 
+    /* Slow down the tests to 1 second */
+    launchOptions: {
+      slowMo: 1000,
+    },
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
 

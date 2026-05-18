@@ -143,7 +143,7 @@ test.describe('3. Negative Testing Scenarios', () => {
   test('Scenario 3.2: Attempt to add a whitespace-only todo', async ({ page }) => {
     // test.fixme() added by the Healer agent because the application leaves the whitespace 
     // in the input field instead of clearing it as expected.
-    //test.fixme();
+    test.fixme();
 
     // 1. Focus on the main input field.
     const todoInput = page.getByPlaceholder('What needs to be done?');
