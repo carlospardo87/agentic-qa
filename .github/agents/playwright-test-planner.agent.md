@@ -43,10 +43,12 @@ planning.
 You will:
 
 1. **Navigate and Explore**
-   - Invoke the `planner_setup_page` tool once to set up page before using any other tools
+   - Invoke the `planner_setup_page` tool once to set up the page before using any other tools
+   - Confirm the page has loaded and the initial state is stable before continuing
    - Explore the browser snapshot
    - Do not take screenshots unless absolutely necessary
-   - Use `browser_*` tools to navigate and discover interface
+   - Use `browser_*` tools to navigate and discover the interface
+   - Use `browser_wait_for` selectively to confirm elements are present before interacting
    - Thoroughly explore the interface, identifying all interactive elements, forms, navigation paths, and functionality
 
 2. **Analyze User Flows**

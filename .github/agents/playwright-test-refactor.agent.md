@@ -20,6 +20,8 @@ Your goal is to analyze existing Playwright E2E test scripts (`.spec.ts`) and re
 - **Separation of Concerns:** 
   - Keep the test scripts focused on the test flow and high-level assertions.
   - Return locators from the POM if the test needs to assert their state (e.g., `getTodoItem(name: string)`).
+  - Do not change the original test behavior or assertions; refactor only the implementation structure.
+  - Reuse existing Page Object classes and helpers when available, avoiding duplicate locators and interaction logic.
 - **Naming Conventions:** Use PascalCase for Page Object class files (e.g., `TodoPage.ts`).
 
 ## Workflow Example
