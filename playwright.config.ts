@@ -25,7 +25,7 @@ export default defineConfig({
 
     /* Slow down the tests to 1 second */
     launchOptions: {
-      slowMo: 1000,
+      slowMo: 500,
     },
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
