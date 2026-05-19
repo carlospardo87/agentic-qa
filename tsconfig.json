@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "outDir": "./dist",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "types": ["node"]
   },
-  "include": ["tests/**/*.ts", "specs/**/*.ts", "playwright.config.ts"]
+  "include": ["./**/*.ts", "tests/**/*.ts", "specs/**/*.ts", "playwright.config.ts"]
 }
+
+
+
