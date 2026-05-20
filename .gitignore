@@ -6,3 +6,4 @@ playwright/.cache/
 dist/
 .env
 .DS_Store
+.playwright-mcp/
