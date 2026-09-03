@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-ES2022-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg?style=flat-square)](LICENSE)
 
-A Proof of Concept showing how four AI agents — **Planner, Generator, Refactor, and Healer** — can plan, generate, maintain, and repair Playwright end-to-end tests with minimal human effort, powered by GitHub Copilot and the MCP protocol inside VS Code.
+A Proof of Concept showing how AI agents — **Planner, Generator, Healer, and Reporter** — can plan, generate, maintain, repair, and report on Playwright end-to-end tests with minimal human effort, powered by GitHub Copilot and the MCP protocol inside VS Code.
 
 ---
 
@@ -16,8 +16,8 @@ A Proof of Concept showing how four AI agents — **Planner, Generator, Refactor
 4. [How to Use Each Agent](#-how-to-use-each-agent)
    - [Planner Agent](#1--planner-agent)
    - [Generator Agent](#2--generator-agent)
-   - [Refactor Agent](#3--refactor-agent)
-   - [Healer Agent](#4--healer-agent)
+   - [Healer Agent](#3--healer-agent)
+   - [Reporter Agent](#4--reporter-agent)
 5. [Running Tests Manually](#-running-tests-manually)
 6. [Project Structure](#-project-structure)
 7. [Architecture Reference](#-architecture-reference)
@@ -78,7 +78,7 @@ When VS Code opens, you may see a notification asking you to allow the MCP serve
 
 If you do not see the notification:
 1. Open the Command Palette (`Cmd+Shift+P` on macOS / `Ctrl+Shift+P` on Windows/Linux)
-2. Run **MCP: List Servers** and verify that `playwright-test` and `filesystem` show as **Running**.
+2. Run **MCP: List Servers** and verify that `playwright-test` shows as **Running**.
 
 ### Step 6 — Verify the setup
 
@@ -98,7 +98,7 @@ npx playwright show-report
 
 ## 🔌 MCP Configuration (required for agents)
 
-The `.vscode/mcp.json` file is already included in the repository and configures two MCP servers automatically:
+The `.vscode/mcp.json` file is already included in the repository and configures the MCP server automatically:
 
 ```json
 {
@@ -107,22 +107,20 @@ The `.vscode/mcp.json` file is already included in the repository and configures
       "type": "stdio",
       "command": "npx",
       "args": ["playwright", "run-test-mcp-server"]
-    },
-    "filesystem": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     }
-  }
+  },
+  "inputs": []
 }
 ```
 
 | Server | Purpose |
 |---|---|
 | `playwright-test` | Gives agents live browser control (click, type, snapshot, run tests) |
-| `filesystem` | Lets agents read and write spec and test files in the workspace |
 
+> The `filesystem` server is currently disabled (commented out) in `.vscode/mcp.json`. Agents read and write spec/test files directly through the editor's file tools instead.
 > No manual configuration is needed — just open the project in VS Code and accept the MCP prompt.
+>
+> **Jira integration is separate**: starting the Planner from a Jira ticket, or having the Reporter post a summary comment, requires an Atlassian/Jira MCP server configured on your own machine (not bundled in this repo's `.vscode/mcp.json`). Without it, those two workflows fall back to plain-text plans/manual reporting.
 
 ---
 
@@ -138,7 +136,7 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 
 ### 1. 🗺️ Planner Agent
 
-**Purpose**: Explores the live application and generates a structured Markdown test plan.
+**Purpose**: Explores the live application and generates a structured Markdown test plan. Can optionally start from a Jira ticket's acceptance criteria instead of a plain-text description.
 
 **When to use**: You want to create a new set of test scenarios for a feature you haven't tested yet.
 
@@ -146,7 +144,7 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 
 1. Open Copilot Chat in Agent mode.
 2. Select the agent: type `@playwright-test-planner` or select it from the agent picker.
-3. Write a prompt describing what you want to test. Example:
+3. Write a prompt describing what you want to test, or reference a Jira ticket key. Example:
 
    ```
    @playwright-test-planner Plan the end-to-end scenarios for the todo filtering feature.
@@ -180,29 +178,7 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 
 ---
 
-### 3. 🔧 Refactor Agent
-
-**Purpose**: Refactors existing `.spec.ts` files to use the **Page Object Model (POM)** pattern.
-
-**When to use**: Tests exist but have inline selectors and logic that should be extracted into a reusable page object class.
-
-**How to invoke**:
-
-1. Open Copilot Chat in Agent mode.
-2. Select `@playwright-test-refactor`.
-3. Point it at the test file to refactor. Example:
-
-   ```
-   @playwright-test-refactor Refactor tests/filter-todos.spec.ts to use the Page Object Model.
-   ```
-
-4. The agent creates or updates a class in `pages/` and rewrites the spec to use it.
-
-**Output**: Updated `pages/TodoPage.ts` (or a new page object) and a cleaner `tests/*.spec.ts`.
-
----
-
-### 4. 🩺 Healer Agent
+### 3. 🩺 Healer Agent
 
 **Purpose**: Diagnoses and fixes failing tests by re-inspecting the DOM and updating broken selectors or assertions.
 
@@ -227,6 +203,28 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 5. The agent replays the failing steps, captures page snapshots, finds the updated selectors, and patches the test file.
 
 **Output**: Updated `tests/*.spec.ts` with corrected locators and/or assertions.
+
+---
+
+### 4. 📣 Reporter Agent
+
+**Purpose**: Summarizes a test generation/healing run — including any selectors that were healed or tests skipped with `test.fixme()` — and posts the summary as a comment on the originating Jira ticket.
+
+**When to use**: After a Generator or Healer run is complete and you want the results (pass/fail per scenario, healing notes, unresolved acceptance-criteria ambiguities) recorded back on the Jira ticket that started the work.
+
+**How to invoke**:
+
+1. Open Copilot Chat in Agent mode.
+2. Select `@playwright-test-reporter`.
+3. Reference the spec/plan and the Jira ticket key. Example:
+
+   ```
+   @playwright-test-reporter Summarize the test run for specs/filter-todos-plan.md and post the results to NVAMSP-1635.
+   ```
+
+4. The agent never generates, fixes, or re-runs tests itself — it only reads existing test results and files, then posts a Jira comment.
+
+**Output**: A comment posted on the referenced Jira ticket.
 
 ---
 
@@ -328,41 +326,6 @@ Save the output to tests/double-click-edit-todos.spec.ts.
 
 ---
 
-### 🔧 Refactor Agent — prompt examples
-
-**Minimal:**
-```
-@playwright-test-refactor
-Refactor tests/filter-todos.spec.ts to use the Page Object Model.
-Create or update the page object class in pages/TodoPage.ts.
-```
-
-**With explicit method naming guidance:**
-```
-@playwright-test-refactor
-Refactor tests/add-new-todos.spec.ts to use the Page Object Model.
-Name page object methods using the action-object convention: addTodo(), deleteTodo(), getTodoCount().
-Update pages/TodoPage.ts with the new methods and rewrite the spec to use them.
-```
-
-**Refactoring multiple specs at once:**
-```
-@playwright-test-refactor
-Refactor all spec files in the tests/ folder to use the existing TodoPage class in pages/TodoPage.ts.
-Extend TodoPage with any missing methods needed.
-Keep all existing test names and assertions intact — only move selectors into the page object.
-```
-
-**After a Generator run, cleaning up inline selectors:**
-```
-@playwright-test-refactor
-The newly generated tests/double-click-edit-todos.spec.ts has inline locators and repetitive page.locator() calls.
-Extract them into pages/TodoPage.ts using meaningful method names.
-The spec file should only contain test logic, no direct locator strings.
-```
-
----
-
 ### 🩺 Healer Agent — prompt examples
 
 **Minimal (with error message):**
@@ -421,6 +384,9 @@ find the new selectors, and update both files.
 
 # ❌ Asking the Healer to add new features instead of fixing failures
 @playwright-test-healer The filter tests pass but I want more assertions. Add them.
+
+# ❌ No ticket reference — Reporter doesn't know where to post the summary
+@playwright-test-reporter Summarize the last test run.
 ```
 
 ---
@@ -435,8 +401,7 @@ find the new selectors, and update both files.
 | `npx playwright test --debug` | Run in debug/step mode |
 | `npx playwright show-report` | Open the last HTML report |
 
-The base URL used by all tests is `https://demo.playwright.dev/todomvc/#/`.  
-To change it, edit the `baseURL` in [playwright.config.ts](playwright.config.ts).
+The base URL used by all tests is defined in [playwright.config.ts](playwright.config.ts) via `baseURL` (overridable with the `BASE_URL` environment variable).
 
 ---
 
@@ -448,31 +413,20 @@ auto-poc/
 │   └── agents/
 │       ├── playwright-test-planner.agent.md    # Planner agent definition
 │       ├── playwright-test-generator.agent.md  # Generator agent definition
-│       ├── playwright-test-refactor.agent.md   # Refactor agent definition
-│       └── playwright-test-healer.agent.md     # Healer agent definition
+│       ├── playwright-test-healer.agent.md     # Healer agent definition
+│       └── playwright-test-reporter.md         # Reporter agent definition
 ├── .vscode/
 │   └── mcp.json                 # MCP server config (pre-configured, no edits needed)
 ├── docs/
 │   └── agents-architecture.md  # Deep-dive architecture documentation
 ├── examples/
 │   └── *.ts                    # Reference examples
-├── pages/
-│   └── TodoPage.ts             # Page Object Model class
 ├── specs/
 │   ├── README.md               # How to write test plans
-│   ├── add-new-todos-plan.md
-│   ├── add-delete-todos-plan.md
-│   ├── clear-completed-todos-plan.md
-│   ├── double-click-edit-todos-plan.md
-│   ├── filter-todos-plan.md
-│   └── validate-footer-links-plan.md
+│   └── NVAMSP-1635.md          # Header search bar test plan
 ├── tests/
 │   ├── seed.spec.ts             # Base state setup used by agents and other tests
-│   ├── add-new-todos.spec.ts
-│   ├── add-delete-todos.spec.ts
-│   ├── clear-completed-todos.spec.ts
-│   ├── double-click-edit-todos.spec.ts
-│   └── validate-footer-links.spec.ts
+│   └── header-search/           # Generated specs for the header search feature
 ├── playwright.config.ts
 ├── package.json
 ├── tsconfig.json
@@ -488,7 +442,7 @@ auto-poc/
 For a detailed explanation of how the agents interact, the MCP bridge, and best practices, see [docs/agents-architecture.md](docs/agents-architecture.md).
 
 Key concepts covered:
-- Agent workflow diagram (Planner → Generator → Healer)
+- Agent workflow diagram (Planner → Generator → Healer → Reporter)
 - MCP tools exposed to the LLM
 - The role of `seed.spec.ts` as a bootstrap context
 - Best practices: selector strategy, avoiding hard-coded timeouts, auditing agent output

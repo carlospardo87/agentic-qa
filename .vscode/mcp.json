@@ -3,21 +3,13 @@
     "playwright-test": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "playwright",
-        "run-test-mcp-server"
-      ]
+      "args": ["playwright", "run-test-mcp-server"]
     },
-
-    "filesystem": {
+   /* "filesystem": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ]
-    }
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    },*/
   },
   "inputs": []
 }
