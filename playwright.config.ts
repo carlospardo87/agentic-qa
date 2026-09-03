@@ -21,7 +21,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'https://demo.playwright.dev/todomvc/#/',
+     baseURL: process.env.BASE_URL || 'https://nva-uat.nvacommunityuat.com/',
 
     /* Slow down the tests to 1 second */
     launchOptions: {
