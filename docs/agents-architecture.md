@@ -10,18 +10,23 @@ The framework splits responsibilities among three highly specialized agents. Thi
 
 ```mermaid
 graph TD
-    A[Human / PRD / Goal] -->|Prompt| B[🎭 Planner Agent]
+    A[Human / PRD / Jira Ticket / Goal] -->|Prompt| B[🎭 Planner Agent]
     B -->|Explores UI & Generates| C[📝 specs/todo-operations.md]
     C -->|Reads Spec & Generates| D[🎭 Generator Agent]
     D -->|Executes Live & Writes| E[💻 tests/todo-operations.spec.ts]
     E -->|If Tests Fail| F[🎭 Healer Agent]
-    F -->|Inspects DOM / Captures Snapshots| G[🔧 Applies Code Patch]
+    F -->|Inspects DOM / Captures Snapshots| H{Drift or real bug?}
+    H -->|Selector/DOM drift| G[🔧 Applies Code Patch]
     G -->|Verifies Pass| E
+    H -->|Feature genuinely broken| I[🚫 Marks test.fixme + Flags for Review]
+    E -->|Run Complete| J[🎭 Reporter Agent]
+    I -->|Run Complete| J
+    J -->|Posts Summary| K[💬 Jira Ticket Comment]
 ```
 
 ### 1. 🎭 The Planner Agent (`playwright-test-planner.agent.md`)
 Acts as the **strategist and E2E designer**. It is designed to navigate and discover the visual structure of your application.
-- **Input**: Natural language request (e.g., *"Test the todo management filtering system"*), custom seed tests (`tests/seed.spec.ts`), and optional PRDs.
+- **Input**: Natural language request (e.g., *"Test the todo management filtering system"*), custom seed tests (`tests/seed.spec.ts`), and optional PRDs or Jira ticket acceptance criteria.
 - **Action**: Runs the seed test to launch a page context, explores the page utilizing browser tools (clicking, typing, analyzing lists), maps out flows, and captures boundary states.
 - **Output**: A comprehensive, human-readable Markdown test plan saved under `specs/` (e.g., `specs/todo-operations.md`).
 
@@ -36,6 +41,12 @@ Acts as the **automated E2E maintenance system**. It resolves the notorious "fla
 - **Input**: Failing test name and failure log.
 - **Action**: Plays back the failing steps, pauses at the error, and captures page snapshots. It re-evaluates the page's active DOM tree to look for matching buttons, inputs, or new selectors.
 - **Output**: An updated and corrected test suite with resilient locators (or skips the test by marking it `test.fixme()` if the feature is genuinely broken).
+
+### 4. 🎭 The Reporter Agent (`playwright-test-reporter.agent.md`)
+Acts as the **liaison back to the business**. It closes the loop between automated test runs and the originating Jira ticket.
+- **Input**: The completed test run (including any healing that occurred) and the source Jira ticket key.
+- **Action**: Summarizes pass/fail results per scenario, calls out any healed selectors or `test.fixme()` skips, and restates any unresolved acceptance-criteria ambiguities. Never re-runs, generates, or fixes tests itself.
+- **Output**: A posted comment on the Jira ticket summarizing the run.
 
 ---
 
