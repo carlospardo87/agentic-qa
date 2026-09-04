@@ -24,6 +24,12 @@ graph TD
     J -->|Posts Summary| K[💬 Jira Ticket Comment]
 ```
 
+> The `A` node lists the four equivalent entry points that can kick off the Planner — not sequential steps, just alternative input sources:
+> - **Human**: a person typing a plain-language prompt directly in Copilot Chat (e.g., "test the header search").
+> - **PRD**: a Product Requirements Document describing the feature to be tested.
+> - **Jira Ticket**: an existing Jira issue read via Jira MCP, using its acceptance criteria as the source of truth.
+> - **Goal**: a high-level objective given with no other formal artifact (e.g., "cover the checkout flow").
+
 ### 1. 🎭 The Planner Agent (`playwright-test-planner.agent.md`)
 Acts as the **strategist and E2E designer**. It is designed to navigate and discover the visual structure of your application.
 - **Input**: Natural language request (e.g., *"Test the todo management filtering system"*), custom seed tests (`tests/seed.spec.ts`), and optional PRDs or Jira ticket acceptance criteria.
@@ -42,7 +48,7 @@ Acts as the **automated E2E maintenance system**. It resolves the notorious "fla
 - **Action**: Plays back the failing steps, pauses at the error, and captures page snapshots. It re-evaluates the page's active DOM tree to look for matching buttons, inputs, or new selectors.
 - **Output**: An updated and corrected test suite with resilient locators (or skips the test by marking it `test.fixme()` if the feature is genuinely broken).
 
-### 4. 🎭 The Reporter Agent (`playwright-test-reporter.agent.md`)
+### 4. 🎭 The Reporter Agent (`playwright-test-reporter.md`)
 Acts as the **liaison back to the business**. It closes the loop between automated test runs and the originating Jira ticket.
 - **Input**: The completed test run (including any healing that occurred) and the source Jira ticket key.
 - **Action**: Summarizes pass/fail results per scenario, calls out any healed selectors or `test.fixme()` skips, and restates any unresolved acceptance-criteria ambiguities. Never re-runs, generates, or fixes tests itself.
