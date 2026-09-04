@@ -391,6 +391,65 @@ find the new selectors, and update both files.
 
 ---
 
+### 🎯 Full worked example: NVAMSP-1635 (Jira-driven, end-to-end)
+
+This walks all four agents through a real Jira-backed feature, from ticket to reported results.
+
+**1. Planner** — read the ticket and produce an Xray-importable plan:
+```
+Read Jira ticket NVAMSP-1635 via Jira MCP and generate a test plan
+in specs/NVAMSP-1635.md.
+Use structured steps format (Action / Data / Expected Result), since
+the plan needs to be importable into Xray or a similar test management
+tool.
+Flag any acceptance criteria that are ambiguous instead of guessing.
+```
+
+**2. Generator** — turn the plan into verified, executed tests:
+```
+Generate Playwright tests from the plan in specs/NVAMSP-1635.md using
+the 🎭 generator agent.
+
+Use tests/seed.spec.ts for setup and as the pattern for imports and
+fixtures.
+
+Verify real selectors against the live DOM before writing assertions.
+Run each generated test yourself and confirm it passes before
+reporting it as done — don't hand off a test you haven't executed.
+```
+
+**3. Healer** — fix failures across the whole suite, distinguishing drift from real regressions:
+```
+Run the 🎭 healer agent on the failing test(s) from the NVAMSP-1635
+suite.
+
+Replay the failing steps and inspect the current live DOM to determine
+whether the failure is caused by selector/DOM drift, not a real
+behavioral regression.
+
+If it's drift, patch the test and re-run it until it passes or the
+guardrails stop the loop.
+
+If the functionality itself appears broken rather than the selector,
+skip the test instead of forcing a pass, and flag it for human review.
+```
+
+**3b. Healer (single test)** — target just one failing test instead of the whole suite:
+```
+Run the 🎭 healer agent on the test "header search redirects on empty
+input" in tests/nvamsp-1635/. Skip running the full suite — debug this
+specific test directly.
+```
+
+**4. Reporter** — close the loop back on the Jira ticket:
+```
+Run the 🎭 reporter agent for NVAMSP-1635. Summarize the results from
+specs/NVAMSP-1635.md's test run — including any healing that occurred —
+and post the summary as a comment on the Jira ticket.
+```
+
+---
+
 ## 🧪 Running Tests Manually
 
 | Command | Description |
