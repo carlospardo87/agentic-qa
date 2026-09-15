@@ -136,7 +136,7 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 
 ### 1. 🗺️ Planner Agent
 
-**Purpose**: Explores the live application and generates a structured Markdown test plan. Can optionally start from a Jira ticket's acceptance criteria instead of a plain-text description.
+**Purpose**: Explores the live application and generates a structured Markdown test plan. Can optionally start from a Jira ticket's acceptance criteria instead of a plain-text description. Critically, it also **screens every scenario for automation suitability** before writing it down.
 
 **When to use**: You want to create a new set of test scenarios for a feature you haven't tested yet.
 
@@ -150,7 +150,16 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
    @playwright-test-planner Plan the end-to-end scenarios for the todo filtering feature.
    ```
 
-4. The agent will open a browser, navigate the app, explore interactions, and save a new Markdown plan to `specs/`.
+4. The agent will open a browser, navigate the app, explore interactions, validate any
+   acceptance criteria against observed behavior (flagging ambiguous or contradictory
+   ones instead of guessing), and save a new Markdown plan to `specs/`.
+
+**Automation screening**: every scenario is judged against five criteria — determinism,
+UI stability, execution frequency, technical feasibility, and risk/business value — and
+labeled either `✅ Yes` (automation candidate) or `⚠️ Manual/Exploratory only`. Only
+`✅ Yes` scenarios are later implemented by the Generator; `⚠️` scenarios stay in the plan
+for human execution. A summary table at the top of the plan lists every scenario next to
+its verdict and one-line rationale.
 
 **Output**: A new file in `specs/`, e.g., `specs/filter-todos-plan.md`.
 
@@ -158,7 +167,7 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
 
 ### 2. ⚙️ Generator Agent
 
-**Purpose**: Reads a Markdown test plan from `specs/` and generates a runnable Playwright `.spec.ts` file.
+**Purpose**: Reads a Markdown test plan from `specs/` and generates a runnable Playwright `.spec.ts` file — but only for scenarios the Planner already marked `✅ Yes`.
 
 **When to use**: A plan exists in `specs/` and you need to turn it into actual test code.
 
@@ -172,9 +181,17 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
    @playwright-test-generator Generate tests from specs/filter-todos-plan.md
    ```
 
-4. The agent reads the plan, verifies each step live in the browser, and writes the test file to `tests/`.
+4. The agent reads the plan, **skips any scenario marked `⚠️ Manual/Exploratory only`**
+   (or unlabeled), verifies each step of the remaining `✅ Yes` scenarios live in the
+   browser, writes the test file to `tests/`, and **runs it immediately to confirm it
+   passes** before reporting it as done.
+5. If a generated test fails, the agent distinguishes its own authoring mistakes (fixed
+   with one self-correction attempt) from genuine selector/DOM or app-behavior issues,
+   which are left as-is and flagged for the Healer agent instead of being force-fixed.
 
-**Output**: A new file in `tests/`, e.g., `tests/filter-todos.spec.ts`.
+**Output**: A new file in `tests/`, e.g., `tests/filter-todos.spec.ts`, plus a run summary
+split into three groups: **Generated & passing**, **Generated but failing** (needs Healer),
+and **Skipped** (manual/exploratory or unlabeled scenarios, with the reason for each).
 
 ---
 
@@ -200,9 +217,15 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
    @playwright-test-healer The test "filter active todos" in tests/filter-todos.spec.ts is failing. Fix it.
    ```
 
-5. The agent replays the failing steps, captures page snapshots, finds the updated selectors, and patches the test file.
+5. The agent replays the failing steps, captures page snapshots, finds the updated selectors, and patches the test file — within a **hard cap of 3 diagnosis-and-fix attempts per test**.
+6. Every fix (or non-fix) leaves a dated inline comment (e.g. `// healed 2026-08-20: ...`)
+   explaining what changed and why. If the agent is confident the app itself is broken
+   rather than the test, or the attempt cap is reached with no clear verdict, it marks
+   the test `test.fixme()` instead of forcing a pass, and states plainly whether that's a
+   confirmed regression or an inconclusive diagnosis needing human investigation.
 
-**Output**: Updated `tests/*.spec.ts` with corrected locators and/or assertions.
+**Output**: Updated `tests/*.spec.ts` with corrected locators/assertions, or a `test.fixme()`
+skip with an explanatory comment when the test shouldn't be forced to pass.
 
 ---
 
@@ -223,6 +246,13 @@ Switch to **Agent mode** by clicking the mode selector at the top of the chat pa
    ```
 
 4. The agent never generates, fixes, or re-runs tests itself — it only reads existing test results and files, then posts a Jira comment.
+
+**Report format**: the comment always contains up to three tables — a **summary count**
+table (Passing / Healed / Skipped / Not yet run / Waiting for human review), an
+**automated scenario detail** table (one row per `✅ Yes` scenario with its test file and
+status, including healer notes where relevant), and a **manual/exploratory scenario
+detail** table (one row per `⚠️` scenario, always shown as ⏳ *Waiting for human review* —
+never Pass/Fail, since this agent has no way to know what a human has already checked).
 
 **Output**: A comment posted on the referenced Jira ticket.
 
