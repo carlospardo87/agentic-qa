@@ -11,17 +11,24 @@ The framework splits responsibilities among three highly specialized agents. Thi
 ```mermaid
 graph TD
     A[Human / PRD / Jira Ticket / Goal] -->|Prompt| B[🎭 Planner Agent]
-    B -->|Explores UI & Generates| C[📝 specs/todo-operations.md]
-    C -->|Reads Spec & Generates| D[🎭 Generator Agent]
+    B -->|Explores UI, validates ACs &
+    screens automation suitability| C[📝 specs/todo-operations.md
+    ✅ Yes / ⚠️ Manual only]
+    C -->|Reads ✅ Yes scenarios only| D[🎭 Generator Agent]
     D -->|Executes Live & Writes| E[💻 tests/todo-operations.spec.ts]
-    E -->|If Tests Fail| F[🎭 Healer Agent]
-    F -->|Inspects DOM / Captures Snapshots| H{Drift or real bug?}
-    H -->|Selector/DOM drift| G[🔧 Applies Code Patch]
+    D -->|⚠️ Manual scenarios| M[📋 Left in plan for human execution]
+    E -->|If Tests Fail: drift/DOM issue,
+    not Generator's own bug| F[🎭 Healer Agent]
+    F -->|Inspects DOM / Captures Snapshots,
+    bounded to 3 attempts| H{Drift or real bug?}
+    H -->|Selector/DOM drift| G[🔧 Applies Code Patch + dated comment]
     G -->|Verifies Pass| E
-    H -->|Feature genuinely broken| I[🚫 Marks test.fixme + Flags for Review]
+    H -->|Feature genuinely broken, or
+    inconclusive after 3 attempts| I[🚫 Marks test.fixme + Flags for Review]
     E -->|Run Complete| J[🎭 Reporter Agent]
     I -->|Run Complete| J
-    J -->|Posts Summary| K[💬 Jira Ticket Comment]
+    M -->|Always ⏳ Waiting for human review| J
+    J -->|Posts 3-table Summary| K[💬 Jira Ticket Comment]
 ```
 
 > The `A` node lists the four equivalent entry points that can kick off the Planner — not sequential steps, just alternative input sources:
@@ -33,26 +40,26 @@ graph TD
 ### 1. 🎭 The Planner Agent (`playwright-test-planner.agent.md`)
 Acts as the **strategist and E2E designer**. It is designed to navigate and discover the visual structure of your application.
 - **Input**: Natural language request (e.g., *"Test the todo management filtering system"*), custom seed tests (`tests/seed.spec.ts`), and optional PRDs or Jira ticket acceptance criteria.
-- **Action**: Runs the seed test to launch a page context, explores the page utilizing browser tools (clicking, typing, analyzing lists), maps out flows, and captures boundary states.
-- **Output**: A comprehensive, human-readable Markdown test plan saved under `specs/` (e.g., `specs/todo-operations.md`).
+- **Action**: Runs the seed test to launch a page context, explores the page utilizing browser tools (clicking, typing, analyzing lists), maps out flows, captures boundary states, and validates each acceptance criterion against observed behavior — flagging anything ambiguous or contradictory instead of guessing. It then **screens every scenario for automation suitability** against five criteria (determinism, UI stability, execution frequency, technical feasibility, risk/business value), labeling each `✅ Yes` or `⚠️ Manual/Exploratory only`.
+- **Output**: A comprehensive, human-readable Markdown test plan saved under `specs/` (e.g., `specs/todo-operations.md`), with a summary table mapping every scenario to its verdict and rationale.
 
 ### 2. 🎭 The Generator Agent (`playwright-test-generator.agent.md`)
-Acts as the **software development engineer in test (SDET)**. It converts structured Markdown test plans into actual TypeScript/JavaScript tests.
+Acts as the **software development engineer in test (SDET)**. It converts structured Markdown test plans into actual TypeScript/JavaScript tests — but only for scenarios the Planner already marked `✅ Yes`.
 - **Input**: The Markdown plan from the `specs/` folder.
-- **Action**: Steps through the test cases in the plan sequentially. For each step, it runs a live browser interaction to verify selectors, check visibility, type, and record success. It records every interaction and turns it into clean, maintainable Playwright code.
-- **Output**: Clean, standard Playwright E2E spec files under `tests/` (e.g., `tests/todo-operations.spec.ts`).
+- **Action**: Skips any scenario marked `⚠️ Manual/Exploratory only` (or unlabeled). For each remaining scenario, it steps through the plan sequentially, running a live browser interaction to verify selectors, check visibility, type, and record success, preferring accessible locators (`getByRole`, `getByLabel`, `getByText`). It writes the test, then **runs it immediately** to confirm it passes before reporting completion. On failure, it distinguishes its own authoring mistakes (self-corrects once) from genuine selector/DOM/app-behavior issues (leaves as-is, flags for the Healer).
+- **Output**: Clean, standard Playwright E2E spec files under `tests/` (e.g., `tests/todo-operations.spec.ts`), plus a three-group run summary: passing, failing (needs Healer), and skipped.
 
 ### 3. 🎭 The Healer Agent (`playwright-test-healer.agent.md`)
-Acts as the **automated E2E maintenance system**. It resolves the notorious "flaky or broken tests" problem when UI structures or selectors change.
+Acts as the **automated E2E maintenance system**. It resolves the notorious "flaky or broken tests" problem when UI structures or selectors change — within a bounded budget, not indefinitely.
 - **Input**: Failing test name and failure log.
-- **Action**: Plays back the failing steps, pauses at the error, and captures page snapshots. It re-evaluates the page's active DOM tree to look for matching buttons, inputs, or new selectors.
-- **Output**: An updated and corrected test suite with resilient locators (or skips the test by marking it `test.fixme()` if the feature is genuinely broken).
+- **Action**: Plays back the failing steps, pauses at the error, and captures page snapshots. It re-evaluates the page's active DOM tree to look for matching buttons, inputs, or new selectors, applying **at most 3 diagnosis-and-fix attempts per test**.
+- **Output**: An updated and corrected test suite with resilient locators and a dated inline comment explaining each fix (e.g. `// healed 2026-08-20: ...`) — or, if the feature is genuinely broken or the attempt cap is reached without a clear verdict, a `test.fixme()` skip with a comment stating explicitly whether it's a confirmed regression or an inconclusive diagnosis needing human investigation.
 
 ### 4. 🎭 The Reporter Agent (`playwright-test-reporter.md`)
-Acts as the **liaison back to the business**. It closes the loop between automated test runs and the originating Jira ticket.
-- **Input**: The completed test run (including any healing that occurred) and the source Jira ticket key.
-- **Action**: Summarizes pass/fail results per scenario, calls out any healed selectors or `test.fixme()` skips, and restates any unresolved acceptance-criteria ambiguities. Never re-runs, generates, or fixes tests itself.
-- **Output**: A posted comment on the Jira ticket summarizing the run.
+Acts as the **liaison back to the business**. It closes the loop between automated test runs and the originating Jira ticket, covering the *entire* plan — automated and manual scenarios alike.
+- **Input**: The completed test run (including any healing that occurred), the full test plan content (with every scenario's `✅`/`⚠️` verdict), and the source Jira ticket key.
+- **Action**: Cross-references the plan against `test_list` to classify each automated scenario as Passing, Healed, Skipped (test.fixme), or Not yet run. Every manual/exploratory scenario is always reported as ⏳ *Waiting for human review* — never Pass/Fail. Never re-runs, generates, or fixes tests itself.
+- **Output**: A posted Jira comment structured as up to three tables: summary counts, automated scenario detail, and manual/exploratory scenario detail.
 
 ---
 
@@ -80,12 +87,14 @@ When you run `npx playwright init-agents`, it provisions an MCP Server configura
 ```
 
 ### Tools exposed to the LLM via MCP:
-- **`playwright-test/browser_click`**: Interacts with page elements.
+- **`playwright-test/browser_click`**, **`browser_type`**, **`browser_hover`**, **`browser_drag`**: Interacts with page elements.
 - **`playwright-test/browser_snapshot`**: Captures the state of the active DOM tree.
-- **`playwright-test/browser_type`**: Enters text fields safely.
-- **`playwright-test/generator_read_log`**: Captures Playwright action histories.
-- **`playwright-test/generator_write_test`**: Saves the generated code directly to disk.
-- **`playwright-test/test_debug`**: Systematically runs and pauses on failing steps.
+- **`playwright-test/browser_verify_element_visible`**, **`browser_verify_text_visible`**, **`browser_verify_value`**: Generator assertions verified live before being written to code.
+- **`playwright-test/planner_setup_page`** / **`planner_save_plan`**: Bootstraps the Planner's browser session and persists the finished plan.
+- **`playwright-test/generator_setup_page`**, **`generator_read_log`**, **`generator_write_test`**: Captures Playwright action histories and saves the generated code directly to disk.
+- **`playwright-test/test_run`**: Runs one or more spec files and reports pass/fail, used by the Generator to confirm a newly written test passes.
+- **`playwright-test/test_debug`**, **`test_list`**: Systematically runs and pauses on failing steps (Healer), and lists current test status (Reporter).
+- **`com.atlassian/atlassian-mcp-server/getJiraIssue`**, **`addCommentToJiraIssue`**: Reads ticket acceptance criteria (Planner) and posts the run summary back (Reporter).
 
 ---
 
@@ -102,3 +111,7 @@ When you run `npx playwright init-agents`, it provisions an MCP Server configura
 > [!WARNING]
 > **Avoid Hard-coded Timeouts**
 > Playwright has robust built-in auto-waiting mechanism. Avoid introducing manual wait delays (like `page.waitForTimeout()`) in your specifications or seeds, as it interferes with the Healer's ability to find element states and causes flakiness.
+
+> [!TIP]
+> **Trust the Planner's Automation Verdict**
+> Not every scenario the Planner writes down should become code. Scenarios labeled `⚠️ Manual/Exploratory only` (subjective judgment, unstable UI, non-repeating checks, or unsimulable external systems) are intentionally left out of the Generator's scope — don't ask the Generator to automate them anyway; route them to a human tester instead.
