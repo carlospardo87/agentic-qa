@@ -20,8 +20,8 @@ export default defineConfig({
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-     baseURL: process.env.BASE_URL || 'https://nva-uat.nvacommunityuat.com/',
+    /* Base URL to use in actions like `await page.goto('/')`. Override with BASE_URL for your own project. */
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
 
     /* Slow down the tests to 1 second */
     launchOptions: {
