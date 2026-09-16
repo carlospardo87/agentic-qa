@@ -6,6 +6,8 @@
 
 A Proof of Concept showing how AI agents — **Planner, Generator, Healer, and Reporter** — can plan, generate, maintain, repair, and report on Playwright end-to-end tests with minimal human effort, powered by GitHub Copilot and the MCP protocol inside VS Code.
 
+> 📖 For the full architecture — agent workflow diagram, MCP tools, and design rationale — see [docs/agents-architecture.md](docs/agents-architecture.md).
+
 ---
 
 ## 📋 Table of Contents
@@ -18,9 +20,10 @@ A Proof of Concept showing how AI agents — **Planner, Generator, Healer, and R
    - [Generator Agent](#2--generator-agent)
    - [Healer Agent](#3--healer-agent)
    - [Reporter Agent](#4--reporter-agent)
-5. [Running Tests Manually](#-running-tests-manually)
-6. [Project Structure](#-project-structure)
-7. [Architecture Reference](#-architecture-reference)
+5. [Prompt Writing Tips](#-prompt-writing-tips)
+6. [Running Tests Manually](#-running-tests-manually)
+7. [Project Structure](#-project-structure)
+8. [Architecture Reference](#-architecture-reference)
 
 ---
 
@@ -34,8 +37,9 @@ Before you start, make sure you have the following installed and configured:
 | [VS Code](https://code.visualstudio.com/) | Latest | Required for agent integration |
 | [GitHub Copilot extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) | Latest | Paid subscription needed |
 | [GitHub Copilot Chat extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) | Latest | Enables agent mode |
+| Atlassian account | — | Only needed for Jira-driven workflows (Planner reading a ticket, Reporter posting a comment) |
 
-> **Why VS Code + Copilot?** The agents in this project are defined as `.agent.md` files under `.github/agents/`. They run inside VS Code Copilot Chat in **Agent mode** and communicate with the browser via the MCP server bundled with Playwright.
+> **Why VS Code + Copilot?** The agents in this project are defined as `.agent.md` files under `.github/agents/`. They run inside VS Code Copilot Chat in **Agent mode** and communicate with the browser and with Jira via the two MCP servers configured in `.vscode/mcp.json`.
 
 ---
 
@@ -64,7 +68,15 @@ npx playwright install
 
 This downloads the Chromium (and optionally Firefox/WebKit) browsers that Playwright needs to run tests and for the agents to interact with the app.
 
-### Step 4 — Open the project in VS Code
+### Step 4 — Point the tests at your application
+
+`baseURL` in [playwright.config.ts](playwright.config.ts) defaults to `http://localhost:3000`. Set it to your own app's URL either by editing the file directly, or by exporting the `BASE_URL` environment variable before running tests:
+
+```bash
+export BASE_URL=https://your-app.example.com
+```
+
+### Step 5 — Open the project in VS Code
 
 ```bash
 code .
@@ -72,15 +84,15 @@ code .
 
 Make sure the **GitHub Copilot** and **GitHub Copilot Chat** extensions are installed and you are signed in.
 
-### Step 5 — Trust the MCP server
+### Step 6 — Trust the MCP servers
 
-When VS Code opens, you may see a notification asking you to allow the MCP server defined in `.vscode/mcp.json`. Click **Allow** (or **Start**) to enable it. This activates the browser automation tools that the agents use.
+When VS Code opens, you may see notifications asking you to allow the MCP servers defined in `.vscode/mcp.json` (`playwright-test` and `com.atlassian/atlassian-mcp-server`). Click **Allow** (or **Start**) to enable them. The Playwright server activates the browser automation tools the agents use; the Atlassian server enables the Jira-driven workflows (Planner reading a ticket, Reporter posting a comment) and will prompt you to sign in with your Atlassian account on first use.
 
 If you do not see the notification:
 1. Open the Command Palette (`Cmd+Shift+P` on macOS / `Ctrl+Shift+P` on Windows/Linux)
-2. Run **MCP: List Servers** and verify that `playwright-test` shows as **Running**.
+2. Run **MCP: List Servers** and verify that `playwright-test` and `com.atlassian/atlassian-mcp-server` both show as **Running**.
 
-### Step 6 — Verify the setup
+### Step 7 — Verify the setup
 
 Run the existing tests to confirm everything is working:
 
@@ -98,7 +110,7 @@ npx playwright show-report
 
 ## 🔌 MCP Configuration (required for agents)
 
-The `.vscode/mcp.json` file is already included in the repository and configures the MCP server automatically:
+The `.vscode/mcp.json` file is already included in the repository and configures both MCP servers automatically:
 
 ```json
 {
@@ -107,6 +119,10 @@ The `.vscode/mcp.json` file is already included in the repository and configures
       "type": "stdio",
       "command": "npx",
       "args": ["playwright", "run-test-mcp-server"]
+    },
+    "com.atlassian/atlassian-mcp-server": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v1/mcp"
     }
   },
   "inputs": []
@@ -116,11 +132,10 @@ The `.vscode/mcp.json` file is already included in the repository and configures
 | Server | Purpose |
 |---|---|
 | `playwright-test` | Gives agents live browser control (click, type, snapshot, run tests) |
+| `com.atlassian/atlassian-mcp-server` | Gives the Planner and Reporter agents access to Jira (`getJiraIssue`, `addCommentToJiraIssue`) |
 
-> The `filesystem` server is currently disabled (commented out) in `.vscode/mcp.json`. Agents read and write spec/test files directly through the editor's file tools instead.
-> No manual configuration is needed — just open the project in VS Code and accept the MCP prompt.
->
-> **Jira integration is separate**: starting the Planner from a Jira ticket, or having the Reporter post a summary comment, requires an Atlassian/Jira MCP server configured on your own machine (not bundled in this repo's `.vscode/mcp.json`). Without it, those two workflows fall back to plain-text plans/manual reporting.
+> No manual configuration is needed — just open the project in VS Code and accept the MCP prompt(s). The first time you use a Jira-driven workflow, VS Code will prompt you to sign in to your Atlassian account.
+> Without Jira access, the Planner still works from a plain-text description and the Reporter falls back to printing the summary in chat instead of posting it as a comment.
 
 ---
 
@@ -242,7 +257,7 @@ skip with an explanatory comment when the test shouldn't be forced to pass.
 3. Reference the spec/plan and the Jira ticket key. Example:
 
    ```
-   @playwright-test-reporter Summarize the test run for specs/filter-todos-plan.md and post the results to NVAMSP-1635.
+   @playwright-test-reporter Summarize the test run for specs/filter-todos-plan.md and post the results to NVAMSP-XXXX.
    ```
 
 4. The agent never generates, fixes, or re-runs tests itself — it only reads existing test results and files, then posts a Jira comment.
@@ -258,107 +273,40 @@ never Pass/Fail, since this agent has no way to know what a human has already ch
 
 ---
 
-## 💬 Prompt Examples & Best Practices
-
-### Prompt writing principles
-
-Before looking at examples, keep these rules in mind:
+## 💬 Prompt Writing Tips
 
 | Principle | Why it matters |
 |---|---|
-| **Be specific about scope** | Vague prompts produce vague plans. Name the feature, the page, or the user flow explicitly. |
+| **Be specific about scope** | Name the feature, page, or user flow explicitly, and where to save the output. |
 | **Mention the starting state** | Tell the agent whether to start fresh or use a seeded state (`seed.spec.ts`). |
-| **Specify the output location** | Tell the agent where to save the file to avoid misplaced output. |
-| **Include edge cases explicitly** | Agents will cover happy paths by default; you must ask for error states, empty states, and boundary conditions. |
-| **One responsibility per prompt** | Don't ask the Planner to also generate code, or the Generator to also refactor. Chain agents one at a time. |
-| **Provide failure details to the Healer** | Always include the test name, file path, and the error message. The more context, the faster the fix. |
+| **One responsibility per prompt** | Don't ask the Planner to also generate code, or the Healer to add new features. Chain agents one at a time. |
+| **Provide failure details to the Healer** | Include the test name, file path, and the error message so it can diagnose faster. |
 
----
-
-### 🗺️ Planner Agent — prompt examples
-
-**Minimal (basic happy path):**
+**Example — Planner:**
 ```
 @playwright-test-planner
-Plan the end-to-end scenarios to add and delete todo items on the TodoMVC app.
-Save the plan to specs/add-delete-todos-plan.md.
-```
-
-**With edge cases and boundary conditions:**
-```
-@playwright-test-planner
-Plan the end-to-end scenarios for the todo filtering feature (All / Active / Completed).
-Include:
-- Happy path: switching between filters with mixed todo states
-- Edge case: filtering when the list is empty
-- Edge case: filtering after completing all items
+Plan the end-to-end scenarios for the todo filtering feature (All / Active / Completed),
+including empty-list and all-completed edge cases.
 Save the plan to specs/filter-todos-plan.md.
 ```
 
-**Starting from a seeded state:**
+**Example — Planner (from a Jira ticket):**
 ```
 @playwright-test-planner
-Using tests/seed.spec.ts as the starting state (3 pre-seeded todos, first one completed),
-plan the scenarios for the "Clear completed" button behavior.
-Cover: button visibility, button click, confirmation that active todos remain.
-Save the plan to specs/clear-completed-todos-plan.md.
+Read Jira ticket NVAMSP-XXXX (https://your-domain.atlassian.net/browse/NVAMSP-XXXX)
+via Jira MCP and generate a test plan in specs/NVAMSP-XXXX.md.
 ```
+> Always include the ticket key (and link, if you have it) — without it the Planner cannot look up the acceptance criteria via Jira MCP.
 
-**Targeting a specific user role or flow:**
-```
-@playwright-test-planner
-Plan the end-to-end scenarios for editing a todo item by double-clicking it.
-Include:
-- Successful edit and save with Enter key
-- Successful edit and save by clicking outside the field
-- Canceling an edit with Escape key
-- Editing a todo and leaving the field blank (should delete the item)
-Save the plan to specs/double-click-edit-todos-plan.md.
-```
-
----
-
-### ⚙️ Generator Agent — prompt examples
-
-**Minimal:**
+**Example — Generator:**
 ```
 @playwright-test-generator
 Generate Playwright tests from specs/filter-todos-plan.md.
+Use accessible locators (getByRole, getByPlaceholder, getByLabel) wherever possible.
 Save the output to tests/filter-todos.spec.ts.
 ```
 
-**With explicit locator strategy preference:**
-```
-@playwright-test-generator
-Generate Playwright tests from specs/add-new-todos-plan.md.
-Use accessible locators (getByRole, getByPlaceholder, getByLabel) wherever possible.
-Avoid CSS class selectors.
-Save the output to tests/add-new-todos.spec.ts.
-```
-
-**With POM awareness:**
-```
-@playwright-test-generator
-Generate Playwright tests from specs/clear-completed-todos-plan.md.
-Use the existing TodoPage class in pages/TodoPage.ts for any interactions
-that are already modeled there. Add new methods to TodoPage if needed.
-Save the output to tests/clear-completed-todos.spec.ts.
-```
-
-**Requesting independent test isolation:**
-```
-@playwright-test-generator
-Generate Playwright tests from specs/double-click-edit-todos-plan.md.
-Each test case must be independent: set up its own state and clean up after itself.
-Do not rely on state left by a previous test.
-Save the output to tests/double-click-edit-todos.spec.ts.
-```
-
----
-
-### 🩺 Healer Agent — prompt examples
-
-**Minimal (with error message):**
+**Example — Healer:**
 ```
 @playwright-test-healer
 The test "should filter active todos" in tests/filter-todos.spec.ts is failing with:
@@ -366,117 +314,18 @@ The test "should filter active todos" in tests/filter-todos.spec.ts is failing w
 Fix the locator.
 ```
 
-**With full context (recommended format):**
+**Example — Reporter:**
 ```
-@playwright-test-healer
-Failing test: "should clear completed todos" in tests/clear-completed-todos.spec.ts
-Error: TimeoutError: locator('button.clear-completed') exceeded timeout of 5000ms
-Browser: Chromium
-
-The "Clear completed" button no longer uses the class .clear-completed.
-Inspect the current DOM, find the correct selector, and update the test.
+@playwright-test-reporter
+Summarize the test run for specs/filter-todos-plan.md and post the results to NVAMSP-XXXX.
 ```
 
-**When the feature itself may be broken:**
-```
-@playwright-test-healer
-The test "should show item count in footer" in tests/validate-footer-links.spec.ts has been failing for 2 days.
-Error: Expected "2 items left" but received "".
-Determine whether this is a selector issue or a genuine regression in the app.
-If the app is broken, mark the test with test.fixme() and add a comment explaining why.
-```
+### 🎯 Worked example: Jira-driven, end-to-end (NVAMSP-XXXX)
 
-**Batch healing after a UI redesign:**
-```
-@playwright-test-healer
-After a recent UI redesign, multiple tests are failing across tests/add-new-todos.spec.ts
-and tests/add-delete-todos.spec.ts. The input field and delete button selectors have changed.
-Run both spec files in debug mode, capture snapshots at each failure point,
-find the new selectors, and update both files.
-```
-
----
-
-### Anti-patterns to avoid
-
-```
-# ❌ Too vague — agent has no idea what "the app" is or what to test
-@playwright-test-planner Test the app.
-
-# ❌ Mixed responsibilities — asking the Planner to write code
-@playwright-test-planner Plan AND generate the tests for the filter feature.
-
-# ❌ No file reference — Generator doesn't know which plan to use
-@playwright-test-generator Generate tests for filtering.
-
-# ❌ No error detail — Healer cannot diagnose without context
-@playwright-test-healer Fix the broken tests.
-
-# ❌ Asking the Healer to add new features instead of fixing failures
-@playwright-test-healer The filter tests pass but I want more assertions. Add them.
-
-# ❌ No ticket reference — Reporter doesn't know where to post the summary
-@playwright-test-reporter Summarize the last test run.
-```
-
----
-
-### 🎯 Full worked example: NVAMSP-1635 (Jira-driven, end-to-end)
-
-This walks all four agents through a real Jira-backed feature, from ticket to reported results.
-
-**1. Planner** — read the ticket and produce an Xray-importable plan:
-```
-Read Jira ticket NVAMSP-1635 via Jira MCP and generate a test plan
-in specs/NVAMSP-1635.md.
-Use structured steps format (Action / Data / Expected Result), since
-the plan needs to be importable into Xray or a similar test management
-tool.
-Flag any acceptance criteria that are ambiguous instead of guessing.
-```
-
-**2. Generator** — turn the plan into verified, executed tests:
-```
-Generate Playwright tests from the plan in specs/NVAMSP-1635.md using
-the 🎭 generator agent.
-
-Use tests/seed.spec.ts for setup and as the pattern for imports and
-fixtures.
-
-Verify real selectors against the live DOM before writing assertions.
-Run each generated test yourself and confirm it passes before
-reporting it as done — don't hand off a test you haven't executed.
-```
-
-**3. Healer** — fix failures across the whole suite, distinguishing drift from real regressions:
-```
-Run the 🎭 healer agent on the failing test(s) from the NVAMSP-1635
-suite.
-
-Replay the failing steps and inspect the current live DOM to determine
-whether the failure is caused by selector/DOM drift, not a real
-behavioral regression.
-
-If it's drift, patch the test and re-run it until it passes or the
-guardrails stop the loop.
-
-If the functionality itself appears broken rather than the selector,
-skip the test instead of forcing a pass, and flag it for human review.
-```
-
-**3b. Healer (single test)** — target just one failing test instead of the whole suite:
-```
-Run the 🎭 healer agent on the test "header search redirects on empty
-input" in tests/nvamsp-1635/. Skip running the full suite — debug this
-specific test directly.
-```
-
-**4. Reporter** — close the loop back on the Jira ticket:
-```
-Run the 🎭 reporter agent for NVAMSP-1635. Summarize the results from
-specs/NVAMSP-1635.md's test run — including any healing that occurred —
-and post the summary as a comment on the Jira ticket.
-```
+1. **Planner** — `Read Jira ticket NVAMSP-XXXX via Jira MCP and generate a test plan in specs/NVAMSP-XXXX.md. Flag any ambiguous acceptance criteria instead of guessing.`
+2. **Generator** — `Generate Playwright tests from specs/NVAMSP-XXXX.md. Verify selectors against the live DOM and run each test to confirm it passes before reporting it as done.`
+3. **Healer** — `Run the healer agent on the failing test(s) from the NVAMSP-XXXX suite. Distinguish selector/DOM drift from real regressions; skip (test.fixme()) instead of forcing a pass.`
+4. **Reporter** — `Summarize the NVAMSP-XXXX test run, including any healing that occurred, and post it as a comment on the Jira ticket.`
 
 ---
 
@@ -512,7 +361,7 @@ auto-poc/
 │   └── *.ts                    # Reference examples
 ├── specs/
 │   ├── README.md               # How to write test plans
-│   └── NVAMSP-1635.md          # Header search bar test plan
+│   └── NVAMSP-XXXX.md          # Header search bar test plan
 ├── tests/
 │   ├── seed.spec.ts             # Base state setup used by agents and other tests
 │   └── header-search/           # Generated specs for the header search feature

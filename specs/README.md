@@ -6,10 +6,9 @@ Each file describes a specific feature or user flow and includes the steps and e
 
 ## Spec files
 
-- `add-new-todos-plan.md` — scenarios for adding new todos
-- `add-delete-todos-plan.md` — scenarios for adding and deleting todos
-- `clear-completed-todos-plan.md` — scenarios for clearing completed todos
-- `filter-todos-plan.md` — scenarios for filtering todo items
+This folder currently has no plan files. New plans are added here by the Planner agent
+(e.g. `specs/filter-todos-plan.md`, or `specs/NVAMSP-1234.md` for a Jira-driven plan) —
+see the [main README](../README.md#-how-to-use-each-agent) for how to generate one.
 
 ## Usage
 
