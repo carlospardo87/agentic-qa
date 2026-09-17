@@ -10,9 +10,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on E2E failures */
-  retries: process.env.CI ? 2 : 2,
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 3 : 3, //undefined
+  workers: process.env.CI ? 2 : undefined, //undefined
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -25,7 +25,7 @@ export default defineConfig({
 
     /* Slow down the tests to 1 second */
     launchOptions: {
-      slowMo: 500,
+      //slowMo: 500,
     },
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
