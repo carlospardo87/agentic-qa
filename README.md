@@ -348,25 +348,24 @@ The base URL used by all tests is defined in [playwright.config.ts](playwright.c
 ```
 auto-poc/
 ├── .github/
-│   └── agents/
-│       ├── playwright-test-planner.agent.md    # Planner agent definition
-│       ├── playwright-test-generator.agent.md  # Generator agent definition
-│       ├── playwright-test-healer.agent.md     # Healer agent definition
-│       └── playwright-test-reporter.md         # Reporter agent definition
+│   ├── agents/
+│   │   ├── playwright-test-planner.agent.md    # Planner agent definition
+│   │   ├── playwright-test-generator.agent.md  # Generator agent definition
+│   │   ├── playwright-test-healer.agent.md     # Healer agent definition
+│   │   └── playwright-test-reporter.md         # Reporter agent definition
+│   └── workflows/
+│       └── copilot-setup-steps.yml            # CI setup and test workflow
 ├── .vscode/
 │   └── mcp.json                 # MCP server config (pre-configured, no edits needed)
 ├── docs/
 │   └── agents-architecture.md  # Deep-dive architecture documentation
-├── examples/
-│   └── *.ts                    # Reference examples
 ├── specs/
-│   ├── README.md               # How to write test plans
-│   └── NVAMSP-XXXX.md          # Header search bar test plan
+│   └── README.md               # How to write test plans
 ├── tests/
-│   ├── seed.spec.ts             # Base state setup used by agents and other tests
-│   └── header-search/           # Generated specs for the header search feature
+│   └── seed.spec.ts             # Base smoke test used by agents
 ├── playwright.config.ts
 ├── package.json
+├── package-lock.json
 ├── tsconfig.json
 └── README.md
 ```
