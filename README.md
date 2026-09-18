@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-ES2022-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg?style=flat-square)](LICENSE)
 
-A Proof of Concept showing how AI agents — **Planner, Generator, Healer, and Reporter** — can plan, generate, maintain, repair, and report on Playwright end-to-end tests with minimal human effort, powered by GitHub Copilot and the MCP protocol inside VS Code.
+A Proof of Concept showing how AI agents — **Planner, Generator, Healer, Auditor, and Reporter** — can plan, generate, maintain, repair, audit, and report on Playwright end-to-end tests with minimal human effort, powered by GitHub Copilot and the MCP protocol inside VS Code.
 
 > 📖 For the full architecture — agent workflow diagram, MCP tools, and design rationale — see [docs/agents-architecture.md](docs/agents-architecture.md).
 
@@ -19,7 +19,8 @@ A Proof of Concept showing how AI agents — **Planner, Generator, Healer, and R
    - [Planner Agent](#1--planner-agent)
    - [Generator Agent](#2--generator-agent)
    - [Healer Agent](#3--healer-agent)
-   - [Reporter Agent](#4--reporter-agent)
+   - [Auditor Agent](#4--auditor-agent)
+   - [Reporter Agent](#5--reporter-agent)
 5. [Prompt Writing Tips](#-prompt-writing-tips)
 6. [Running Tests Manually](#-running-tests-manually)
 7. [Project Structure](#-project-structure)
@@ -244,7 +245,31 @@ skip with an explanatory comment when the test shouldn't be forced to pass.
 
 ---
 
-### 4. 📣 Reporter Agent
+### 4. �️ Auditor Agent
+
+**Purpose**: A read-only quality gate that checks whether each generated test **actually validates** its scenario, rather than just passing. It catches "ghost tests" that click around but never assert anything meaningful.
+
+**When to use**: After a Generator (or Healer) run, before reporting results — to confirm the green tests are trustworthy.
+
+**How to invoke**:
+
+1. Open Copilot Chat in Agent mode.
+2. Select `@playwright-test-auditor`.
+3. Reference the plan and the generated tests. Example:
+
+   ```
+   @playwright-test-auditor Audit the tests generated from specs/filter-todos-plan.md.
+   ```
+
+4. For each `✅ Yes` scenario, the agent reads the corresponding test and checks it against six criteria — real assertion, targets the scenario's expected result, asserts user-facing behavior (not CSS/internal IDs), resilient accessible locators, no hard-coded waits, and 1:1 mapping to the plan. It never runs, edits, or fixes tests.
+
+**Report format**: two scannable tables — a **verdict count** table and a **per-scenario detail** table classifying each test as `✅ Solid`, `⚠️ Weak` (ghost/mis-targeted/fragile), or `❌ Missing`. Weak and missing tests are routed back to the Generator; well-written but genuinely broken ones go to the Healer.
+
+**Output**: An audit report in chat. Nothing is written to disk or posted to Jira.
+
+---
+
+### 5. �📣 Reporter Agent
 
 **Purpose**: Summarizes a test generation/healing run — including any selectors that were healed or tests skipped with `test.fixme()` — and posts the summary as a comment on the originating Jira ticket.
 
@@ -314,6 +339,13 @@ The test "should filter active todos" in tests/filter-todos.spec.ts is failing w
 Fix the locator.
 ```
 
+**Example — Auditor:**
+```
+@playwright-test-auditor
+Audit the tests generated from specs/filter-todos-plan.md.
+Flag any ghost tests, mis-targeted assertions, or fragile locators.
+```
+
 **Example — Reporter:**
 ```
 @playwright-test-reporter
@@ -325,7 +357,8 @@ Summarize the test run for specs/filter-todos-plan.md and post the results to NV
 1. **Planner** — `Read Jira ticket NVAMSP-XXXX via Jira MCP and generate a test plan in specs/NVAMSP-XXXX.md. Flag any ambiguous acceptance criteria instead of guessing.`
 2. **Generator** — `Generate Playwright tests from specs/NVAMSP-XXXX.md. Verify selectors against the live DOM and run each test to confirm it passes before reporting it as done.`
 3. **Healer** — `Run the healer agent on the failing test(s) from the NVAMSP-XXXX suite. Distinguish selector/DOM drift from real regressions; skip (test.fixme()) instead of forcing a pass.`
-4. **Reporter** — `Summarize the NVAMSP-XXXX test run, including any healing that occurred, and post it as a comment on the Jira ticket.`
+4. **Auditor** — `Audit the NVAMSP-XXXX tests against the plan. Flag ghost tests, mis-targeted assertions, or fragile locators before reporting.`
+5. **Reporter** — `Summarize the NVAMSP-XXXX test run, including any healing that occurred, and post it as a comment on the Jira ticket.`
 
 ---
 
@@ -352,7 +385,8 @@ auto-poc/
 │   │   ├── playwright-test-planner.agent.md    # Planner agent definition
 │   │   ├── playwright-test-generator.agent.md  # Generator agent definition
 │   │   ├── playwright-test-healer.agent.md     # Healer agent definition
-│   │   └── playwright-test-reporter.md         # Reporter agent definition
+│   │   ├── playwright-test-auditor.agent.md    # Auditor agent definition
+│   │   └── playwright-test-reporter.agent.md   # Reporter agent definition
 │   └── workflows/
 │       └── copilot-setup-steps.yml            # CI setup and test workflow
 ├── .vscode/

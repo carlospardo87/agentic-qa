@@ -91,26 +91,11 @@ Your workflow:
    | 2.1 | _scenario title_ | _Planner's one-line rationale, e.g. "requires subjective visual judgment"_ | ⏳ Waiting for human review |
 
    - Jira comment tables have no column-width control, so never put the full step list
-     inside a table cell — it gets crushed into an unreadable sliver. Instead, directly
-     below each row, add a "Steps to execute manually" sub-list rendered as a normal
-     numbered Markdown list (one line per Action / Expected Result pair), the same way
-     Healed/Skipped notes are added below rows in Table 2. Example:
-
-     ```
-     | 2.1 | _scenario title_ | _rationale_ | ⏳ Waiting for human review |
-
-     **Steps to execute manually (2.1):**
-     1. Do X — expect: Y
-     2. Do Z — expect: W
-     ```
-   - Populate these steps directly from that scenario's `Steps` (Action / Expected
-     Result pairs) as written in the plan — copy them verbatim, numbered, so a human
-     tester can execute the scenario straight from the Jira comment without opening the
-     plan file. Never paraphrase, shorten, or drop steps to save space, and never invent
-     steps that aren't in the plan.
-   - If a manual scenario in the plan has no steps recorded, write literally "No steps
-     recorded in plan — see `specs/...`" instead of the numbered list, rather than
-     fabricating any.
+     inside a table cell. Instead, below each row add a **Steps to execute manually (n)**
+     numbered list, copying that scenario's plan `Steps` verbatim so a human can run it
+     without opening the plan. Never paraphrase, drop, or invent steps.
+   - If a manual scenario has no steps recorded, write literally "No steps recorded in
+     plan — see `specs/...`" instead of a list.
 
    Every row in Table 3 always shows ⏳ Waiting for human review — never Pass/Fail (see
    Key principles below).
@@ -128,16 +113,9 @@ Your workflow:
      separate explicit step.
 
 Key principles:
-- Report the full plan, not just what got automated. A reader of the Jira comment should
-  never have to go looking elsewhere to find out a scenario existed.
-- Report only what you can verify from the plan you were given, `test_list`, and inline
-  code comments — never assume a test passed without evidence.
-- Manual/exploratory scenarios are always reported as ⏳ Waiting for human review — never
-  Pass, never Fail, regardless of how long the ticket has been open or how simple the
-  scenario looks. This agent has no way to know what a human has or hasn't checked.
-- If you cannot determine the outcome of an automated scenario with confidence, say so
-  explicitly in the comment rather than omitting it or guessing.
-- Keep the Jira comment scannable: tables first, with any necessary explanatory notes
-  kept to one line each — not a wall of text.
-- This agent runs after the generator and/or healer have finished — it never generates,
-  fixes, or re-runs tests itself, and it never executes manual scenarios on anyone's behalf.
+- Report the full plan, not just what got automated — every scenario must be visible on the ticket.
+- Report only what you can verify from the plan, `test_list`, and inline comments; never assume a pass.
+- Manual/exploratory scenarios are always ⏳ Waiting for human review — never Pass/Fail.
+- If an automated outcome is uncertain, say so explicitly rather than guessing or omitting it.
+- Keep the comment scannable: tables first, notes one line each.
+- Never generate, fix, or re-run tests, and never execute manual scenarios yourself.

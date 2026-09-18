@@ -6,7 +6,8 @@
   "scripts": {
   "test": "playwright test",
   "test:seed": "playwright test tests/seed.spec.ts",
-  "test:report": "playwright show-report"
+  "test:report": "playwright show-report",
+  "test:failed": "playwright test --reporter=json 2>/dev/null | jq -r '[.. | objects | select(has(\"specs\")) | .specs[]] | .[] | select(.ok==false) | \"\\(.file) :: \\(.title)\"'"
 },
   "keywords": [],
   "author": "",

@@ -65,20 +65,10 @@ regardless of how close you feel to a fix:
   able to tell them apart.
 
 Key principles:
-- Be systematic and thorough in your debugging approach, but bounded — 3 attempts is a
-  budget, not a target to always use in full. Stop as soon as you pass or reach a
-  confident verdict, whichever comes first.
-- Document your findings and reasoning for each fix
-- Prefer robust, maintainable solutions over quick hacks
-- Use Playwright best practices for reliable test automation
-- If multiple errors exist, fix them one at a time and retest, but they still count
-  against the same 3-attempt budget for that test — do not reset the counter per error
-- Provide clear explanations of what was broken and how you fixed it
-- Every fix — or every non-fix, in the inconclusive case — must be traceable: leave an
-  inline comment at the point of change (or at the top of the test, if no single line
-  is responsible) stating what broke, what you changed or tried, and why. This comment
-  is the only persistent record of the healing event, since there is no separate log file
-- Never mark a test.fixme() comment as a confirmed bug when the real reason is that you
-  ran out of attempts — say plainly that the diagnosis was inconclusive
-- Do not ask user questions, you are not interactive tool, do the most reasonable thing possible to pass the test
-- Never wait for networkidle or use other discouraged or deprecated apis
+- 3 attempts is a budget, not a target — stop as soon as you pass or reach a confident verdict.
+- Prefer robust, maintainable locators; for dynamic data use regex.
+- Fix multiple errors one at a time; they share the same 3-attempt budget (never reset it).
+- Every fix or non-fix leaves one dated inline comment — the only persistent record of the event.
+- An inconclusive result and a confirmed regression are different findings; never label one as the other.
+- Do not ask the user questions; do the most reasonable thing to pass the test.
+- Never wait for networkidle or use discouraged/deprecated APIs.

@@ -6,7 +6,7 @@ Playwright Test Agents represent a revolutionary, AI-driven paradigm in End-to-E
 
 ## 🏗️ The Agentic Suite
 
-The framework splits responsibilities among three highly specialized agents. This separation ensures that the strategist does not get bogged down in syntax, and the fixer does not lose sight of the target user flow.
+The framework splits responsibilities among specialized agents. This separation ensures that the strategist does not get bogged down in syntax, the fixer does not lose sight of the target user flow, and the auditor keeps everyone honest about what "passing" really means.
 
 ```mermaid
 graph TD
@@ -25,7 +25,10 @@ graph TD
     G -->|Verifies Pass| E
     H -->|Feature genuinely broken, or
     inconclusive after 3 attempts| I[🚫 Marks test.fixme + Flags for Review]
-    E -->|Run Complete| J[🎭 Reporter Agent]
+    E -->|Passing tests| AUD[🕵️ Auditor Agent]
+    AUD -->|⚠️ Weak / ❌ Missing:
+    ghost or mis-targeted test| D
+    AUD -->|✅ Solid| J[🎭 Reporter Agent]
     I -->|Run Complete| J
     M -->|Always ⏳ Waiting for human review| J
     J -->|Posts 3-table Summary| K[💬 Jira Ticket Comment]
@@ -55,7 +58,13 @@ Acts as the **automated E2E maintenance system**. It resolves the notorious "fla
 - **Action**: Plays back the failing steps, pauses at the error, and captures page snapshots. It re-evaluates the page's active DOM tree to look for matching buttons, inputs, or new selectors, applying **at most 3 diagnosis-and-fix attempts per test**.
 - **Output**: An updated and corrected test suite with resilient locators and a dated inline comment explaining each fix (e.g. `// healed 2026-08-20: ...`) — or, if the feature is genuinely broken or the attempt cap is reached without a clear verdict, a `test.fixme()` skip with a comment stating explicitly whether it's a confirmed regression or an inconclusive diagnosis needing human investigation.
 
-### 4. 🎭 The Reporter Agent (`playwright-test-reporter.md`)
+### 4. 🕵️ The Auditor Agent (`playwright-test-auditor.agent.md`)
+Acts as the **read-only quality gate** between generation/healing and reporting. Its single job is to catch the gap between a test that *passes* and a test that actually *validates* something — a "ghost test" that clicks around but never asserts will show green to the runner yet prove nothing.
+- **Input**: The full test plan content (with every scenario's `✅`/`⚠️` verdict) and the generated `.spec.ts` files under `tests/`.
+- **Action**: For each `✅ Yes` scenario, reads the corresponding test and checks it against six criteria — has a real assertion, targets the scenario's stated expected result, asserts user-facing behavior (not CSS/internal IDs), uses resilient accessible locators, has no hard-coded waits, and maps 1:1 to the plan. It never runs, edits, mutates, or heals tests; it only reads and judges. Scenarios marked `⚠️ Manual/Exploratory only` are out of scope, so their absence from `tests/` is never a finding.
+- **Output**: Two scannable tables — verdict counts and per-scenario detail — classifying each test as `✅ Solid`, `⚠️ Weak` (ghost/mis-targeted/fragile), or `❌ Missing`. Weak and missing tests are routed back to the Generator; well-written but genuinely broken ones go to the Healer.
+
+### 5. 🎭 The Reporter Agent (`playwright-test-reporter.agent.md`)
 Acts as the **liaison back to the business**. It closes the loop between automated test runs and the originating Jira ticket, covering the *entire* plan — automated and manual scenarios alike.
 - **Input**: The completed test run (including any healing that occurred), the full test plan content (with every scenario's `✅`/`⚠️` verdict), and the source Jira ticket key.
 - **Action**: Cross-references the plan against `test_list` to classify each automated scenario as Passing, Healed, Skipped (test.fixme), or Not yet run. Every manual/exploratory scenario is always reported as ⏳ *Waiting for human review* — never Pass/Fail. Never re-runs, generates, or fixes tests itself.
@@ -93,7 +102,7 @@ When you run `npx playwright init-agents`, it provisions an MCP Server configura
 - **`playwright-test/planner_setup_page`** / **`planner_save_plan`**: Bootstraps the Planner's browser session and persists the finished plan.
 - **`playwright-test/generator_setup_page`**, **`generator_read_log`**, **`generator_write_test`**: Captures Playwright action histories and saves the generated code directly to disk.
 - **`playwright-test/test_run`**: Runs one or more spec files and reports pass/fail, used by the Generator to confirm a newly written test passes.
-- **`playwright-test/test_debug`**, **`test_list`**: Systematically runs and pauses on failing steps (Healer), and lists current test status (Reporter).
+- **`playwright-test/test_debug`**, **`test_list`**: Systematically runs and pauses on failing steps (Healer), and lists current test status (Auditor and Reporter).
 - **`com.atlassian/atlassian-mcp-server/getJiraIssue`**, **`addCommentToJiraIssue`**: Reads ticket acceptance criteria (Planner) and posts the run summary back (Reporter).
 
 ---
@@ -106,7 +115,7 @@ When you run `npx playwright init-agents`, it provisions an MCP Server configura
 
 > [!NOTE]
 > **Audit Agent Output**
-> While the Generator and Healer are incredibly capable, you should always review the E2E code they output. Confirm that selectors use standard accessibility attributes (like `getByRole` or `getByPlaceholder`) and thatassertions verify user-facing actions rather than internal CSS styles.
+> While the Generator and Healer are incredibly capable, you should always review the E2E code they output. Confirm that selectors use standard accessibility attributes (like `getByRole` or `getByPlaceholder`) and that assertions verify user-facing actions rather than internal CSS styles. The **Auditor Agent** automates the first pass of exactly this review — flagging ghost tests, mis-targeted assertions, and fragile locators — but a human sign-off on its findings is still recommended.
 
 > [!WARNING]
 > **Avoid Hard-coded Timeouts**

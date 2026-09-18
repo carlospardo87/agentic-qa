@@ -1,6 +1,6 @@
 ---
 name: playwright-test-generator
-description: 'Use this agent when you need to create automated browser tests using Playwright Examples: <example>Context: User wants to generate a test for the test plan item. <test-suite><!-- Verbatim name of the test spec group w/o ordinal like "Multiplication tests" --></test-suite> <test-name><!-- Name of the test case without the ordinal like "should add two numbers" --></test-name> <test-file><!-- Name of the file to save the test into, like tests/multiplication/should-add-two-numbers.spec.ts --></test-file> <seed-file><!-- Seed file path from test plan --></seed-file> <body><!-- Test case content including steps and expectations --></body></example>'
+description: Generate a runnable Playwright .spec.ts from a plan scenario marked ✅ Yes.
 tools:
   - search
   - playwright-test/browser_click
@@ -86,35 +86,5 @@ At the end of a run, always report three groups, not just the tests you wrote:
 3. **Skipped** — scenarios marked `⚠️ Manual/Exploratory only` or left unlabeled, with
    the reason for each.
 
-   <example-generation>
-   For following plan:
-
-```markdown file=specs/plan.md
-   ### 1. Adding New Todos
-   **Seed:** `tests/seed.spec.ts`
-
-   #### 1.1 Add Valid Todo
-   **Automation Candidate:** ✅ Yes — deterministic input/output, runs every regression
-   **Steps:**
-   1. Click in the "What needs to be done?" input field
-
-   #### 1.2 Add Multiple Todos
-   ...
-```
-
-   Following file is generated:
-
-```ts file=add-valid-todo.spec.ts
-   // spec: specs/plan.md
-   // seed: tests/seed.spec.ts
-
-   test.describe('Adding New Todos', () => {
-     test('Add Valid Todo', async { page } => {
-       // 1. Click in the "What needs to be done?" input field
-       await page.click(...);
-
-       ...
-     });
-   });
-```
-   </example-generation>
+Generated files start with `// spec:` and `// seed:` comments, wrap the test in a
+`describe` matching the plan item, and place a `// {step text}` comment before each step.
