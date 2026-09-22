@@ -219,11 +219,13 @@ and **Skipped** (manual/exploratory or unlabeled scenarios, with the reason for 
 
 **How to invoke**:
 
-1. Run your tests first to identify the failure:
+1. Identify the failing test(s) yourself in a terminal (cheaper than an MCP-driven full run):
 
    ```bash
-   npx playwright test
+   npm run test:failed
    ```
+
+   This prints `file :: title` for every currently-failing test.
 
 2. Open Copilot Chat in Agent mode.
 3. Select `@playwright-test-healer`.
@@ -243,6 +245,8 @@ and **Skipped** (manual/exploratory or unlabeled scenarios, with the reason for 
 **Output**: Updated `tests/*.spec.ts` with corrected locators/assertions, or a `test.fixme()`
 skip with an explanatory comment when the test shouldn't be forced to pass.
 
+> If no specific test is given, the agent itself runs `npm run test:failed` first to find what's broken instead of driving a full MCP `test_run` over the whole suite.
+
 ---
 
 ### 4. �️ Auditor Agent
@@ -261,7 +265,12 @@ skip with an explanatory comment when the test shouldn't be forced to pass.
    @playwright-test-auditor Audit the tests generated from specs/filter-todos-plan.md.
    ```
 
-4. For each `✅ Yes` scenario, the agent reads the corresponding test and checks it against six criteria — real assertion, targets the scenario's expected result, asserts user-facing behavior (not CSS/internal IDs), resilient accessible locators, no hard-coded waits, and 1:1 mapping to the plan. It never runs, edits, or fixes tests.
+4. For each `✅ Yes` scenario, the agent reads the corresponding test and runs
+   `npx playwright test --list` in a terminal to confirm which tests actually exist
+   (instead of an MCP `test_list` call), then checks each one against six criteria —
+   real assertion, targets the scenario's expected result, asserts user-facing behavior
+   (not CSS/internal IDs), resilient accessible locators, no hard-coded waits, and 1:1
+   mapping to the plan. It never runs, edits, or fixes tests.
 
 **Report format**: two scannable tables — a **verdict count** table and a **per-scenario detail** table classifying each test as `✅ Solid`, `⚠️ Weak` (ghost/mis-targeted/fragile), or `❌ Missing`. Weak and missing tests are routed back to the Generator; well-written but genuinely broken ones go to the Healer.
 

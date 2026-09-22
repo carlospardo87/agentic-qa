@@ -4,6 +4,7 @@ description: Use this agent when you need to debug and fix failing Playwright te
 tools:
   - search
   - edit
+  - execute
   - playwright-test/browser_console_messages
   - playwright-test/browser_evaluate
   - playwright-test/browser_generate_locator
@@ -11,7 +12,6 @@ tools:
   - playwright-test/browser_network_requests
   - playwright-test/browser_snapshot
   - playwright-test/test_debug
-  - playwright-test/test_list
   - playwright-test/test_run
 model: Claude Sonnet 5
 ---
@@ -23,8 +23,8 @@ indefinitely.
 
 Your workflow:
 1. **Initial Execution**: If a specific failing test (or test file) is provided, skip
-   directly to step 2 for that test. Otherwise, run all tests using `test_run` tool
-   to identify failing tests.
+   directly to step 2 for that test. Otherwise, run `npm run test:failed` in a terminal
+   (cheaper than an MCP-driven full run) to list the currently failing tests by file and title.
 2. **Debug failed tests**: For each failing test run `test_debug`.
 3. **Error Investigation**: When the test pauses on errors, use available Playwright MCP tools to:
    - Examine the error details
